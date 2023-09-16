@@ -11,33 +11,29 @@ const frameHeight = docHeight - 2 * docMargin;
 const edoBlockHeight = 90;
 const lineTextDistance = 5;
 
-// redesign below table. we need to know:
-// - either the rational expression p/q OR the prime factorization
-// - color could be determined based on prime limit
-// - name
+// Storing the prime factorization is desirable, because it would be easier to
+// group ratios according to their complexity.
+
+// example 1: ratio 5/4
+// - its factorization is 2^-2 * 3^0 * 5.
+// - therefore its exponents are -2, 0, and 1. The -2 can be discarded and
+//   calculated on init.
+// - array would look like [0, 1]
+
+// example 2: ratio 21/16
+// - its factorization is 2^-4 * 3 * 5^0 * 7.
+// - therefore its exponents are -4, 1, 0, and 1.
+// - we would store the array [1, 0, 1] as the -4 can be
+//   calculated automatically.
 //
-// Storing the prime factorization is desirable.
-// Octave reducing could be done automatically, reducing burden and from this
-// we could deduce the colouration, and the number of factors of a given prime
-// is given so we could use that to hide overly complex ratios.
+// example 3: ratio 21/20
+// - its factorization is 2^-2 * 3 * 5^-1 * 7.
+// - therefore its exponents are -2, 1, -1, and 1.
+// these factors would be stored as [1, -1, 1] and the object might look like:
+// { "factors": [1, -1, 1], "name": "septimal minor semitone" }
 //
-//
-// example:
-// - the ratio 5/4 would be stored as 5, and the octave reducing
-// by 2^-2 is assumed.
-// - the ratio 15/14 could be stored as [0, 1, 1, -2], but since we are reducing octave automatically we can skip the 0 and store [1, 1, -2] to indicate 1 power of 3, 1 power of 5, and -2 powers of 7
-//
-// We can also generate the octave complement automatically, but then it is necessary to store both names.
-// For example: 21/20 = 3 * 5^-1 * 7
-// these factors would be stored as [1, -1, 1] and the object might look like
-// { "factors": [1, -1, 1],
-//   "name": "septimal minor semitone",
-//   "complementName": "septimal acute major seventh"
-// }
-//
-// This introduces a code readability issue. If we store the ratio as P and Q,
-// we retain readability. The factors could be generated during an init step.
-// To retain readability, let's write a redundant P and Q in the object.
+
+// For future use according to the above:
 
 const jiMap = [
     { "factors": [1], "name": "perfect fifth" },
@@ -80,25 +76,36 @@ const jiTable = {
         [15, 8, "major seventh"]
     ],
     // 7 limit
-    // 0 0 1 = 7/4
-    // 1 0 1 = 21/16
+    // sorting method for complexity ranking (not for display):
+    // first sort key: the sum of the absolute values of the exponents whose base is not 2.
+    // second sort key: the numerator after 2^n normalization.
+    // third sort key: the denominator after 2^n normalization.
+
+    // 0 0 1 = 7/4. sum(abs(exponents)) = 1.
+    // 0 0 -1 = 8/7. 
+    // 0 -1 1 = 7/5. sum(abs(exponents)) = 2.
     // -1 0 1 = 7/6
-    // 0 1 1 = 35/32
-    // 0 -1 1 = 7/5
-    // 1 1 1 = 105/64
-    // 1 -1 1 = 21/20
-    // -1 1 1 = 35/24
-    // -1 -1 1 = 28/15
-    // 0 0 -1 = 8/7
-    // 1 0 -1 = 12/7
-    // -1 0 -1 = 32/21
     // 0 1 -1 = 10/7
+    // 1 0 -1 = 12/7
+    // 1 0 1 = 21/16
+    // -1 0 -1 = 32/21
+    // 0 1 1 = 35/32
+    // 0 0 2 = 49/32 hmm should these be allowed? maybe change criteria
     // 0 -1 -1 = 64/35
-    // 1 1 -1 = 15/14
-    // 1 -1 -1 = 48/35
+    // 0 0 -2 = 64/49
+    // 1 1 -1 = 15/14. sum(abs(exponents)) = 3.
+    // 1 -1 1 = 21/20
+    // -1 -1 1 = 28/15
+    // -1 1 1 = 35/24
     // -1 1 -1 = 40/21
+    // 1 -1 -1 = 48/35
+    // 0 -1 2 = 49/40
+    // -1 0 2 = 49/48 isn't that a comma?
+    // 1 1 1 = 105/64
     // -1 -1 -1 = 128/105
+    // 0 0 3 = 343/256 ridiculous... what use could this have?
     //
+    // sorting method for display: by log2 of the ratio
     "7": [
         [21, 20, "septimal minor semitone"],
         [15, 14, "septimal diatonic semitone"],
@@ -155,6 +162,7 @@ function drawSVG() {
     var place = docMargin;
     drawJI();
     drawEdo(12);
+    drawEdo(16);
     drawEdo(19);
     drawEdo(22);
     drawEdo(31);
@@ -239,19 +247,5 @@ function drawSVG() {
         svg.appendChild(g);
 
         place += edoBlockHeight;
-    }
-
-    function drawJISeparate() {
-        drawJI('red', jiTable["3"]);
-        drawJI('blue', jiTable["5"]);
-        drawJI('green', jiTable["7"]);
-        drawJI('orange', jiTable["11"]);
-    }
-
-    function drawJICondensed() {
-        drawJI('red', jiTable["3"], "no text"); place -= blockHeight;
-        drawJI('blue', jiTable["5"], "no text"); place -= blockHeight;
-        drawJI('green', jiTable["7"], "no text"); place -= blockHeight;
-        drawJI('orange', jiTable["11"], "no text");
     }
 }
